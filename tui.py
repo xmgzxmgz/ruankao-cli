@@ -104,7 +104,7 @@ def paged_view(stdscr, title, lines, hint="空格/↓ 翻页 · ↑ 上翻 · q 
         pages = [[("", 0)]]
     pi = 0
     while True:
-        stdscr.erase()
+        stdscr.clear()
         s_add(stdscr, 0, 0, " " + title, curses.color_pair(C_TITLE) | curses.A_BOLD, maxw=maxx - 1)
         s_add(stdscr, maxy - 1, 0, " " + hint + "   [%d/%d]" % (pi + 1, len(pages)),
               curses.color_pair(C_DIM), maxx - 1)
@@ -128,7 +128,7 @@ def draw_question(stdscr, q, idx, total, mode, state, picked):
     """渲染当前题，返回选项行区间 opt_ranges（用于鼠标命中）。"""
     maxy, maxx = stdscr.getmaxyx()
     width = max(20, maxx - 4)
-    stdscr.erase()
+    stdscr.clear()
     # 顶部伪装条
     s_add(stdscr, 0, 0, " ruankao-test-runner   [suite loaded]",
           curses.color_pair(C_HEADER) | curses.A_BOLD, maxx - 1)
@@ -267,14 +267,17 @@ def run_tui(qs, mode, instant=True, num=75, minutes=150):
         curses.curs_set(0)
         curses.mousemask(curses.ALL_MOUSE_EVENTS | curses.REPORT_MOUSE_POSITION)
         curses.start_color()
-        curses.use_default_colors()
-        curses.init_pair(C_HEADER, curses.COLOR_CYAN, -1)
-        curses.init_pair(C_NORM, curses.COLOR_WHITE, -1)
-        curses.init_pair(C_OK, curses.COLOR_GREEN, -1)
-        curses.init_pair(C_BAD, curses.COLOR_RED, -1)
-        curses.init_pair(C_DIM, curses.COLOR_YELLOW, -1)
-        curses.init_pair(C_TITLE, curses.COLOR_WHITE, -1)
-        curses.init_pair(C_PICK, curses.COLOR_CYAN, -1)
+        # 用纯黑底色，避免 Windows Terminal 默认灰底导致"雾蒙蒙"
+        curses.init_pair(C_HEADER, curses.COLOR_CYAN, curses.COLOR_BLACK)
+        curses.init_pair(C_NORM, curses.COLOR_WHITE, curses.COLOR_BLACK)
+        curses.init_pair(C_OK, curses.COLOR_GREEN, curses.COLOR_BLACK)
+        curses.init_pair(C_BAD, curses.COLOR_RED, curses.COLOR_BLACK)
+        curses.init_pair(C_DIM, 242, curses.COLOR_BLACK)  # 暗灰色（比 COLOR_YELLOW 柔和）
+        curses.init_pair(C_TITLE, curses.COLOR_WHITE | curses.A_BOLD, curses.COLOR_BLACK)
+        curses.init_pair(C_PICK, curses.COLOR_CYAN, curses.COLOR_BLACK)
+        # 全局底色：确保每格都有黑底白字，彻底消除残影
+        stdscr.bkgd(' ', curses.color_pair(C_NORM))
+        stdscr.refresh()
 
         opt_ranges = []
         while idx < total:
@@ -282,6 +285,7 @@ def run_tui(qs, mode, instant=True, num=75, minutes=150):
             if not instant:
                 remain = limit - (time.time() - start)
                 if remain <= 0:
+                    stdscr.clear()
                     s_add(stdscr, 0, 0, " == 时间到，自动交卷 ==", curses.color_pair(C_BAD) | curses.A_BOLD)
                     stdscr.refresh()
                     time.sleep(1.2)
@@ -385,7 +389,7 @@ def run_tui(qs, mode, instant=True, num=75, minutes=150):
     def _finalize_practice(stdscr):
         save_wrong(wrong)
         maxy, maxx = stdscr.getmaxyx()
-        stdscr.erase()
+        stdscr.clear()
         s_add(stdscr, 1, 2, "session summary", curses.color_pair(C_TITLE) | curses.A_BOLD, maxx - 3)
         s_add(stdscr, 3, 2, "错题本: %d 题（已写入 wrong.json）" % len(wrong),
               curses.color_pair(C_NORM), maxx - 3)
