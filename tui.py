@@ -12,6 +12,7 @@ import curses
 import time
 import json
 import os
+import sys
 
 # 本地化，避免以脚本方式运行时 from drill import 触发二次导入
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -107,7 +108,7 @@ def paged_view(stdscr, title, lines, hint="空格/↓ 翻页 · ↑ 上翻 · q 
         stdscr.clear()
         s_add(stdscr, 0, 0, " " + title, curses.color_pair(C_TITLE) | curses.A_BOLD, maxw=maxx - 1)
         s_add(stdscr, maxy - 1, 0, " " + hint + "   [%d/%d]" % (pi + 1, len(pages)),
-              curses.color_pair(C_DIM), maxx - 1)
+              curses.color_pair(C_DIM) | curses.A_DIM, maxx - 1)
         y = 2
         for seg, attr in pages[pi]:
             s_add(stdscr, y, 2, seg, attr, maxx - 3)
@@ -136,7 +137,7 @@ def draw_question(stdscr, q, idx, total, mode, state, picked):
     if q.get("paper"):
         tag += " (" + q["paper"] + ")"
     status = " case #%s  %s   %d/%d   mode=%s" % (q["id"], tag, idx + 1, total, mode)
-    s_add(stdscr, 1, 0, status, curses.color_pair(C_DIM), maxx - 1)
+    s_add(stdscr, 1, 0, status, curses.color_pair(C_DIM) | curses.A_DIM, maxx - 1)
 
     y = 3
     for seg in wrap(q["q"], width):
@@ -174,17 +175,17 @@ def draw_question(stdscr, q, idx, total, mode, state, picked):
         y += 1
         if q.get("exp"):
             for seg in wrap("note: " + q["exp"], width - 2):
-                s_add(stdscr, y, 4, seg, curses.color_pair(C_DIM), maxx - 5)
+                s_add(stdscr, y, 4, seg, curses.color_pair(C_DIM) | curses.A_DIM, maxx - 5)
                 y += 1
         s_add(stdscr, maxy - 1, 0, " 回车/点击 下一题 · [w] 错题本 · [q] 退出",
-              curses.color_pair(C_DIM), maxx - 1)
+              curses.color_pair(C_DIM) | curses.A_DIM, maxx - 1)
     elif state == "recorded":
-        s_add(stdscr, y, 2, " 已记录（答案交卷后揭晓）", curses.color_pair(C_DIM), maxx - 3)
+        s_add(stdscr, y, 2, " 已记录（答案交卷后揭晓）", curses.color_pair(C_DIM) | curses.A_DIM, maxx - 3)
         s_add(stdscr, maxy - 1, 0, " 回车/点击 下一题 · [q] 交卷",
-              curses.color_pair(C_DIM), maxx - 1)
+              curses.color_pair(C_DIM) | curses.A_DIM, maxx - 1)
     else:
         s_add(stdscr, maxy - 1, 0, " a/b/c/d 或 鼠标点击选项作答 · [n] 跳过 · [w] 错题 · [q] 退出",
-              curses.color_pair(C_DIM), maxx - 1)
+              curses.color_pair(C_DIM) | curses.A_DIM, maxx - 1)
     stdscr.refresh()
     return opt_ranges
 
@@ -212,7 +213,7 @@ def mock_review(stdscr, records):
         st[1] += 1
         if pk == q["ans"]:
             st[0] += 1
-    lines.append(("-- 分类明细 --", curses.color_pair(C_DIM)))
+    lines.append(("-- 分类明细 --", curses.color_pair(C_DIM) | curses.A_DIM))
     for c in sorted(cat_stat, key=lambda x: -cat_stat[x][0] / cat_stat[x][1]):
         ok, tot = cat_stat[c]
         lines.append(("  %-22s %d/%d (%.0f%%)" % (c, ok, tot, ok / tot * 100),
@@ -222,7 +223,7 @@ def mock_review(stdscr, records):
     for q, pk in records:
         if pk == q["ans"]:
             continue
-        lines.append(("#%s [%s]" % (q["id"], q["cat"]), curses.color_pair(C_DIM)))
+        lines.append(("#%s [%s]" % (q["id"], q["cat"]), curses.color_pair(C_DIM) | curses.A_DIM))
         for seg in wrap(q["q"], 70):
             lines.append(("  " + seg, curses.color_pair(C_NORM)))
         for i, o in enumerate(q["opts"]):
@@ -240,7 +241,7 @@ def mock_review(stdscr, records):
                 lines.append(("    " + (mark if k == 0 else "  ") + seg, a))
         if q.get("exp"):
             for seg in wrap("note: " + q["exp"], 66):
-                lines.append(("    " + seg, curses.color_pair(C_DIM)))
+                lines.append(("    " + seg, curses.color_pair(C_DIM) | curses.A_DIM))
         lines.append(("", 0))
     paged_view(stdscr, "模拟考试回顾", lines)
 
@@ -268,15 +269,23 @@ def run_tui(qs, mode, instant=True, num=75, minutes=150):
         curses.mousemask(curses.ALL_MOUSE_EVENTS | curses.REPORT_MOUSE_POSITION)
         curses.start_color()
         # 用纯黑底色，避免 Windows Terminal 默认灰底导致"雾蒙蒙"
-        curses.init_pair(C_HEADER, curses.COLOR_CYAN, curses.COLOR_BLACK)
-        curses.init_pair(C_NORM, curses.COLOR_WHITE, curses.COLOR_BLACK)
-        curses.init_pair(C_OK, curses.COLOR_GREEN, curses.COLOR_BLACK)
-        curses.init_pair(C_BAD, curses.COLOR_RED, curses.COLOR_BLACK)
-        curses.init_pair(C_DIM, 242, curses.COLOR_BLACK)  # 暗灰色（比 COLOR_YELLOW 柔和）
-        curses.init_pair(C_TITLE, curses.COLOR_WHITE | curses.A_BOLD, curses.COLOR_BLACK)
-        curses.init_pair(C_PICK, curses.COLOR_CYAN, curses.COLOR_BLACK)
+        # 所有颜色对只用标准 8 色调（CYAN/WHITE/GREEN/RED/BLACK），不依赖扩展色号，
+        # 兼容性最稳；暗色文字用 A_DIM 属性实现，不依赖灰度色号。
+        try:
+            curses.init_pair(C_HEADER, curses.COLOR_CYAN, curses.COLOR_BLACK)
+            curses.init_pair(C_NORM, curses.COLOR_WHITE, curses.COLOR_BLACK)
+            curses.init_pair(C_OK, curses.COLOR_GREEN, curses.COLOR_BLACK)
+            curses.init_pair(C_BAD, curses.COLOR_RED, curses.COLOR_BLACK)
+            curses.init_pair(C_DIM, curses.COLOR_WHITE, curses.COLOR_BLACK)
+            curses.init_pair(C_TITLE, curses.COLOR_WHITE, curses.COLOR_BLACK)
+            curses.init_pair(C_PICK, curses.COLOR_CYAN, curses.COLOR_BLACK)
+        except curses.error:
+            pass  # 颜色初始化失败则退回终端默认，TUI 仍可运行
         # 全局底色：确保每格都有黑底白字，彻底消除残影
-        stdscr.bkgd(' ', curses.color_pair(C_NORM))
+        try:
+            stdscr.bkgd(' ', curses.color_pair(C_NORM))
+        except curses.error:
+            pass
         stdscr.refresh()
 
         opt_ranges = []
@@ -321,7 +330,7 @@ def run_tui(qs, mode, instant=True, num=75, minutes=150):
                 if not wrong:
                     lines.append(("错题本为空", curses.color_pair(C_OK)))
                 for w in wrong:
-                    lines.append(("#%s [%s]" % (w["id"], w["cat"]), curses.color_pair(C_DIM)))
+                    lines.append(("#%s [%s]" % (w["id"], w["cat"]), curses.color_pair(C_DIM) | curses.A_DIM))
                     for seg in wrap(w["q"], 66):
                         lines.append(("  " + seg, curses.color_pair(C_NORM)))
                     for i, o in enumerate(w["opts"]):
@@ -329,7 +338,7 @@ def run_tui(qs, mode, instant=True, num=75, minutes=150):
                         lines.append(("   %s %s" % (mark, o), curses.color_pair(C_NORM)))
                     if w.get("exp"):
                         for seg in wrap("note: " + w["exp"], 66):
-                            lines.append(("    " + seg, curses.color_pair(C_DIM)))
+                            lines.append(("    " + seg, curses.color_pair(C_DIM) | curses.A_DIM))
                     lines.append(("", 0))
                 paged_view(stdscr, "错题本 (%d)" % len(wrong), lines)
                 continue
@@ -393,7 +402,7 @@ def run_tui(qs, mode, instant=True, num=75, minutes=150):
         s_add(stdscr, 1, 2, "session summary", curses.color_pair(C_TITLE) | curses.A_BOLD, maxx - 3)
         s_add(stdscr, 3, 2, "错题本: %d 题（已写入 wrong.json）" % len(wrong),
               curses.color_pair(C_NORM), maxx - 3)
-        s_add(stdscr, maxy - 1, 0, " 任意键退出", curses.color_pair(C_DIM), maxx - 1)
+        s_add(stdscr, maxy - 1, 0, " 任意键退出", curses.color_pair(C_DIM) | curses.A_DIM, maxx - 1)
         stdscr.refresh()
         stdscr.getch()
 
@@ -408,6 +417,9 @@ def run_tui(qs, mode, instant=True, num=75, minutes=150):
 
     try:
         curses.wrapper(main_loop)
+    except KeyboardInterrupt:
+        # Ctrl+C 干净退出，不抛 traceback
+        sys.exit(0)
     except Exception as e:
-        # 兜底：任何 TUI 异常退回 CLI 行为
+        # 兜底：TUI 不可用，向上抛由 drill.py 降级到键盘模式
         raise
