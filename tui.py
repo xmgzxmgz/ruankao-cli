@@ -75,12 +75,34 @@ def wrap(text, width):
 
 
 def s_add(win, y, x, s, attr=0, maxw=None):
+    """安全写字符串。maxw 按显示宽度截断（非字符数）；addstr 失败时逐字符兜底。"""
+    if not s:
+        return
+    if maxw is not None:
+        # 按显示宽度截断（CJK=2列）
+        dw = 0
+        cut = len(s)
+        for i, ch in enumerate(s):
+            cw = 2 if unicodedata.east_asian_width(ch) in ("W", "F") else 1
+            if dw + cw > maxw:
+                cut = i
+                break
+            dw += cw
+        s = s[:cut]
     try:
-        if maxw is not None and len(s) > maxw:
-            s = s[:maxw]
         win.addstr(y, x, s, attr)
+        return
     except curses.error:
         pass
+    # 兜底：逐字符写，哪个字失败就跳过（避免整行丢失）
+    cx = x
+    for ch in s:
+        try:
+            win.addch(y, cx, ch, attr)
+        except curses.error:
+            break
+        cw = 2 if unicodedata.east_asian_width(ch) in ("W", "F") else 1
+        cx += cw
 
 
 def paged_view(stdscr, title, lines, hint="空格/↓ 翻页 · ↑ 上翻 · q 返回"):
@@ -268,9 +290,8 @@ def run_tui(qs, mode, instant=True, num=75, minutes=150):
         curses.curs_set(0)
         curses.mousemask(curses.ALL_MOUSE_EVENTS | curses.REPORT_MOUSE_POSITION)
         curses.start_color()
-        # 用纯黑底色，避免 Windows Terminal 默认灰底导致"雾蒙蒙"
-        # 所有颜色对只用标准 8 色调（CYAN/WHITE/GREEN/RED/BLACK），不依赖扩展色号，
-        # 兼容性最稳；暗色文字用 A_DIM 属性实现，不依赖灰度色号。
+        # 颜色方案：全部用标准 8 色，背景统一 COLOR_BLACK
+        # 注意：Windows Terminal 可能不遵守 curses 黑底，下面用 bkgd + clear 强制刷底
         try:
             curses.init_pair(C_HEADER, curses.COLOR_CYAN, curses.COLOR_BLACK)
             curses.init_pair(C_NORM, curses.COLOR_WHITE, curses.COLOR_BLACK)
@@ -280,12 +301,13 @@ def run_tui(qs, mode, instant=True, num=75, minutes=150):
             curses.init_pair(C_TITLE, curses.COLOR_WHITE, curses.COLOR_BLACK)
             curses.init_pair(C_PICK, curses.COLOR_CYAN, curses.COLOR_BLACK)
         except curses.error:
-            pass  # 颜色初始化失败则退回终端默认，TUI 仍可运行
-        # 全局底色：确保每格都有黑底白字，彻底消除残影
+            pass
+        # 关键：先设底色属性，再 clear() 整屏刷新——确保每个格子都带黑底
         try:
-            stdscr.bkgd(' ', curses.color_pair(C_NORM))
+            stdscr.bkgdset(' ', curses.color_pair(C_NORM))
         except curses.error:
             pass
+        stdscr.clear()
         stdscr.refresh()
 
         opt_ranges = []
