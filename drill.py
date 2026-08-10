@@ -12,6 +12,10 @@ ruankao : 终端软考高项刷题器（低调模式）
   ruankao --paper 2023上  练某年试卷
   ruankao --papers       列出所有往年试卷
   ruankao --mock         模拟考试（75题/150分钟，结束出分+回顾）
+  ruankao --tui          强制终端鼠标 TUI（点选项作答，默认在终端内启用）
+  ruankao --cli          强制键盘 CLI
+注：在真实终端直接运行 ruankao 默认进入鼠标 TUI（鼠标点选项 / 键盘 a-d 均可），
+    管道或非交互环境自动退回键盘 CLI。
 """
 import argparse
 import json
@@ -23,7 +27,7 @@ import time
 HERE = os.path.dirname(os.path.abspath(__file__))
 QFILE = os.path.join(HERE, "questions.json")
 WFILE = os.path.join(HERE, "wrong.json")
-VERSION = "1.2.0"
+VERSION = "1.3.0"
 
 R = "\033[0m"
 DIM = "\033[2m"
@@ -341,6 +345,8 @@ def main(argv=None):
     ap.add_argument("--mock", action="store_true", help="模拟考试（75题/150分钟）")
     ap.add_argument("--num", type=int, default=75, help="模拟考试题数（默认75）")
     ap.add_argument("--time", type=int, default=150, help="模拟考试限时分钟（默认150）")
+    ap.add_argument("--tui", action="store_true", help="强制使用终端鼠标 TUI（点选项作答）")
+    ap.add_argument("--cli", action="store_true", help="强制使用键盘 CLI（不使用鼠标 TUI）")
     args = ap.parse_args(argv)
 
     data = load_questions()
@@ -362,39 +368,60 @@ def main(argv=None):
 
     cats = sorted(set(q["cat"] for q in qs_all))
 
+    # 交互界面选择：终端内默认启用鼠标 TUI，管道/非交互退回键盘 CLI
+    use_tui = False
+    if args.cli:
+        use_tui = False
+    elif args.tui:
+        use_tui = True
+    else:
+        use_tui = sys.stdout.isatty()
+
+    # 确定题库与模式
+    is_mock = args.mock
     if args.paper:
         qs = [q for q in qs_all if q.get("paper") == args.paper]
         if not qs:
             print(RED + "未找到试卷: " + args.paper + R)
             print(DIM + "可用: " + ", ".join(sorted(set(q.get("paper") for q in qs_all if q.get("paper")))) + R)
             sys.exit(1)
-        run_practice(qs, "paper=" + args.paper)
-        return
-
-    if args.mock:
-        run_mock(qs_all, args.time, args.num)
-        return
-
-    if args.wrong:
+        label = "paper=" + args.paper
+    elif args.mock:
+        qs = qs_all
+        label = "exam %dm" % args.time
+    elif args.wrong:
         wrong = load_wrong()
         ids = {w["id"] for w in wrong}
         qs = [q for q in qs_all if q["id"] in ids]
         if not qs:
             print(GREEN + "错题本为空，无需复习" + R)
             sys.exit(0)
-        run_practice(qs, "wrong-box(%d)" % len(qs))
-        return
-
-    if args.cat:
+        label = "wrong-box(%d)" % len(qs)
+    elif args.cat:
         qs = [q for q in qs_all if q["cat"] == args.cat]
         if not qs:
             print(RED + "未找到分类: " + args.cat + R)
             print(DIM + "可用: " + ", ".join(cats) + R)
             sys.exit(1)
-        run_practice(qs, "cat=" + args.cat)
-        return
+        label = "cat=" + args.cat
+    else:
+        qs = qs_all
+        label = "random"
 
-    run_practice(qs_all, "random")
+    if use_tui:
+        try:
+            from tui import run_tui
+            run_tui(qs, label, instant=not is_mock, num=args.num, minutes=args.time)
+        except Exception as e:
+            print(DIM + "[TUI 不可用，自动退回键盘模式: " + str(e) + "]" + R)
+            if is_mock:
+                run_mock(qs, args.time, args.num)
+            else:
+                run_practice(qs, label)
+    elif is_mock:
+        run_mock(qs, args.time, args.num)
+    else:
+        run_practice(qs, label)
 
 
 if __name__ == "__main__":
