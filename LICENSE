@@ -1,0 +1,37 @@
+MIT License
+
+Copyright (c) 2026 ruankao-cli contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+------------------------------------------------------------------------------
+
+注意（Notice）：
+
+本仓库中的**源代码**（drill.py、build_final.py 等脚本，以及本 LICENSE 适用的
+程序文件）以 MIT 许可证授权。
+
+但 `questions.json` 中的**试题内容并非本仓库作者原创**，其版权归各自原作者/
+出处所有，整合自以下公开来源（详见 ATTRIBUTION.md）：
+
+  - IHKYoung/RuanKao  (https://github.com/IHKYoung/RuanKao)  — 未声明许可证
+  - cnitpm / 信管网    (https://www.cnitpm.com)              — 网站版权所有
+  - xiaomabenten/ruankao_itpm (https://github.com/xiaomabenten/ruankao_itpm) — MIT
+
+试题数据仅用于个人学习，不主张任何权利；如原作者有异议可随时要求移除。

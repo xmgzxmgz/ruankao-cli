@@ -23,7 +23,7 @@ import time
 HERE = os.path.dirname(os.path.abspath(__file__))
 QFILE = os.path.join(HERE, "questions.json")
 WFILE = os.path.join(HERE, "wrong.json")
-VERSION = "1.1.0"
+VERSION = "1.2.0"
 
 R = "\033[0m"
 DIM = "\033[2m"
