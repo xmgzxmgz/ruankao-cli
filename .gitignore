@@ -1,0 +1,22 @@
+# exploratory / one-off scrape & probe scripts
+probe*.py
+gh*.py
+*_scrape*.py
+dbg*.py
+find_pm1.py
+inspect*.py
+list_pm1.py
+cn_dbg.py
+cnitpm_extract.py
+dl.py
+dlscript.py
+merge_bank.py
+final_merge.py
+gh_explore.py
+
+# raw downloaded corpora (large, not needed to rebuild from questions.json)
+src_data/
+
+# python
+__pycache__/
+*.pyc
